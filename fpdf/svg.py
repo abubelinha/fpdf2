@@ -5,7 +5,9 @@ The contents of this module are internal to fpdf2, and not part of the public AP
 They may change at any time without prior warning or any deprecation period,
 in non-backward-compatible ways.
 """
-import math, re, warnings
+import logging, math, re, warnings
+from numbers import Number
+from typing import NamedTuple
 
 from fontTools.svgLib.path import parse_path
 from fontTools.pens.basePen import BasePen
@@ -28,6 +30,8 @@ from .drawing import (
     PaintedPath,
     Transform,
 )
+
+LOGGER = logging.getLogger(__name__)
 
 __pdoc__ = {"force_nodocument": False}
 
@@ -654,7 +658,8 @@ class SVGObject:
         with open(filename, "r", encoding=encoding) as svgfile:
             return cls(svgfile.read(), *args, **kwargs)
 
-    def __init__(self, svg_text):
+    def __init__(self, svg_text, fpdf=None):
+        self.fpdf = fpdf  # Needed to render images
         self.cross_references = {}
 
         # disabling bandit rule as we use defusedxml:
@@ -837,6 +842,7 @@ class SVGObject:
             debug_stream (io.TextIO): the stream to which rendering debug info will be
                 written.
         """
+        self.fpdf = pdf  # Needed to render images
         _, _, path = self.transform_to_page_viewport(pdf)
 
         old_x, old_y = pdf.x, pdf.y
@@ -905,14 +911,18 @@ class SVGObject:
         for child in group:
             if child.tag in xmlns_lookup("svg", "defs"):
                 self.handle_defs(child)
-            if child.tag in xmlns_lookup("svg", "g"):
+            elif child.tag in xmlns_lookup("svg", "g"):
                 pdf_group.add_item(self.build_group(child))
-            if child.tag in xmlns_lookup("svg", "path"):
+            elif child.tag in xmlns_lookup("svg", "path"):
                 pdf_group.add_item(self.build_path(child))
             elif child.tag in shape_tags:
                 pdf_group.add_item(getattr(ShapeBuilder, shape_tags[child.tag])(child))
-            if child.tag in xmlns_lookup("svg", "use"):
+            elif child.tag in xmlns_lookup("svg", "use"):
                 pdf_group.add_item(self.build_xref(child))
+            elif child.tag in xmlns_lookup("svg", "image"):
+                pdf_group.add_item(self.build_image(child))
+            else:
+                LOGGER.debug("Unsupported SVG tag: <%s>", child.tag)
 
         try:
             self.cross_references["#" + group.attrib["id"]] = pdf_group
@@ -938,3 +948,78 @@ class SVGObject:
             pass
 
         return pdf_path
+
+    @force_nodocument
+    def build_image(self, image):
+        if xmlns("xlink", "href") not in image.attrib:
+            raise ValueError("<image> is missing a href attribute")
+        if "width" in image.attrib:
+            width = float(image.attrib["width"])
+        else:
+            raise NotImplementedError("TODO: handle <image> without explicit width")
+        if "height" in image.attrib:
+            height = float(image.attrib["height"])
+        else:
+            raise NotImplementedError("TODO: handle <image> without explicit height")
+        if "preserveAspectRatio" in image.attrib:
+            raise NotImplementedError(
+                '"preserveAspectRatio" defined on <image> is currently not supported'
+            )
+        if "style" in image.attrib:
+            raise NotImplementedError(
+                '"style" defined on <image> is currently not supported'
+            )
+        if "transform" in image.attrib:
+            raise NotImplementedError(
+                '"transform" defined on <image> is currently not supported'
+            )
+        return SVGImage(
+            href=image.attrib[xmlns("xlink", "href")],
+            x=float(image.attrib.get("x", "0")),
+            y=float(image.attrib.get("y", "0")),
+            width=width,
+            height=height,
+            svg_obj=self,
+        )
+
+
+class SVGImage(NamedTuple):
+    href: str
+    x: Number
+    y: Number
+    width: Number
+    height: Number
+    svg_obj: SVGObject
+
+    def __deepcopy__(self, _memo):
+        # Defining this method is required to avoid the .svg_obj reference to be clone:
+        return SVGImage(
+            href=self.href,
+            x=self.x,
+            y=self.y,
+            width=self.width,
+            height=self.height,
+            svg_obj=self.svg_obj,
+        )
+
+    @force_nodocument
+    def render(self, _gsd_registry, _style, last_item, initial_point):
+        fpdf = self.svg_obj and self.svg_obj.fpdf
+        prev_auto_page_break = fpdf.auto_page_break
+        fpdf.auto_page_break = False
+        stream_content, _, _, _, _, _ = fpdf.stream_content_for_image(
+            name=self.href,
+            x=self.x,
+            y=self.y,
+            w=self.width,
+            h=self.height,
+            flip_y_mode="SCALE",
+        )
+        fpdf.auto_page_break = prev_auto_page_break
+        return stream_content, last_item, initial_point
+
+    @force_nodocument
+    def render_debug(
+        self, gsd_registry, style, last_item, initial_point, debug_stream, pfx
+    ):
+        raise NotImplementedError

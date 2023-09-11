@@ -1,0 +1,17 @@
+<?xml version="1.0" standalone="no"?>
+<svg width="10cm" height="10cm" viewBox="0 0 1000 1000" version="1.1"
+     xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <title>Example image.svg - embedding raster images</title>
+
+  <rect fill="none" stroke="blue" stroke-width="1" x="1" y="1" width="998" height="998" />
+
+  <!-- Image 1 : relative link to JPEG -->
+  <image x="100" y="100"
+         width="300" height="300"
+         xlink:href="test/image/image_types/insert_images_insert_jpg.jpg"/>
+
+  <!-- Image 2 : data:image/png;base64 -->
+  <image x="500" y="500"
+         width="300" height="300"
+         xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQBAMAAADt3eJSAAAAMFBMVEU0OkArMjhobHEoPUPFEBIuO0L+AAC2FBZ2JyuNICOfGx7xAwTjCAlCNTvVDA1aLzQ3COjMAAAAVUlEQVQI12NgwAaCDSA0888GCItjn0szWGBJTVoGSCjWs8TleQCQYV95evdxkFT8Kpe0PLDi5WfKd4LUsN5zS1sKFolt8bwAZrCaGqNYJAgFDEpQAAAzmxafI4vZWwAAAABJRU5ErkJggg=="/>
+</svg>

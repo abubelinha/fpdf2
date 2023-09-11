@@ -3157,7 +3157,6 @@ class DrawingContext:
             return ""
 
         style_dict_name = gsd_registry.register_style(style)
-
         if style_dict_name is not None:
             render_list.insert(2, f"{render_pdf_primitive(style_dict_name)} gs")
             render_list.insert(
@@ -3222,7 +3221,6 @@ class DrawingContext:
                 return ""
 
             style_dict_name = gsd_registry.register_style(style)
-
             if style_dict_name is not None:
                 render_list.insert(2, f"{render_pdf_primitive(style_dict_name)} gs")
                 render_list.insert(

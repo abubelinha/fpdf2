@@ -3811,21 +3811,54 @@ class FPDF(GraphicsStateMixin):
             )
         if isinstance(name, io.BytesIO) and _is_svg(name.getvalue().strip()):
             return self._vector_image(name, x, y, w, h, link, title, alt_text)
+
+        stream_content, info, x, y, w, h = self.stream_content_for_image(
+            name,
+            x,
+            y,
+            w,
+            h,
+            scale=self.k,
+            dims=dims,
+            keep_aspect_ratio=keep_aspect_ratio,
+        )
+        if title or alt_text:
+            with self._marked_sequence(title=title, alt_text=alt_text):
+                self._out(stream_content)
+        else:
+            self._out(stream_content)
+        if link:
+            self.link(x, y, w, h, link)
+
+        return ImageInfo(**info, rendered_width=w, rendered_height=h)
+
+    def stream_content_for_image(
+        self,
+        name,
+        x,
+        y,
+        w,
+        h,
+        scale=1,
+        flip_y_mode="PAGE",
+        dims=None,
+        keep_aspect_ratio=False,
+    ):
         name, img, info = self.preload_image(name, dims)
         if "smask" in info:
             self._set_min_pdf_version("1.4")
 
         # Automatic width and height calculation if needed
         if w == 0 and h == 0:  # Put image at 72 dpi
-            w = info["w"] / self.k
-            h = info["h"] / self.k
+            w = info["w"] / scale
+            h = info["h"] / scale
         elif w == 0:
             w = h * info["w"] / info["h"]
         elif h == 0:
             h = w * info["h"] / info["w"]
 
         if self.oversized_images and info["usages"] == 1 and not dims:
-            info = self._downscale_image(name, img, info, w, h)
+            info = self._downscale_image(name, img, info, w, h, scale)
 
         # Flowing mode
         if y is None:
@@ -3859,19 +3892,18 @@ class FPDF(GraphicsStateMixin):
             else:
                 raise ValueError(f"Unsupported 'x' value passed to .image(): {x}")
 
+        if flip_y_mode == "PAGE":
+            stream_h = h
+            stream_y = self.h - h - y
+        else:  # == "SCALE"
+            stream_h = -h
+            stream_y = y + h
         stream_content = (
-            f"q {w * self.k:.2f} 0 0 {h * self.k:.2f} {x * self.k:.2f} "
-            f"{(self.h - y - h) * self.k:.2f} cm /I{info['i']} Do Q"
+            f"q {w * scale:.2f} 0 0 {stream_h * scale:.2f}"
+            f" {x * scale:.2f} {stream_y * scale:.2f} cm"
+            f" /I{info['i']} Do Q"
         )
-        if title or alt_text:
-            with self._marked_sequence(title=title, alt_text=alt_text):
-                self._out(stream_content)
-        else:
-            self._out(stream_content)
-        if link:
-            self.link(x, y, w, h, link)
-
-        return ImageInfo(**info, rendered_width=w, rendered_height=h)
+        return stream_content, info, x, y, w, h
 
     def preload_image(self, name, dims=None):
         """
@@ -3938,7 +3970,7 @@ class FPDF(GraphicsStateMixin):
         title=None,
         alt_text=None,
     ):
-        svg = SVGObject(img.getvalue())
+        svg = SVGObject(img.getvalue(), fpdf=self)
         if not svg.viewbox and svg.width and svg.height:
             warnings.warn(
                 '<svg> has no "viewBox", using its "width" & "height" as default "viewBox"',
@@ -4005,8 +4037,8 @@ class FPDF(GraphicsStateMixin):
 
         return ImageInfo(rendered_width=w, rendered_height=h)
 
-    def _downscale_image(self, name, img, info, w, h):
-        width_in_pt, height_in_pt = w * self.k, h * self.k
+    def _downscale_image(self, name, img, info, w, h, scale):
+        width_in_pt, height_in_pt = w * scale, h * scale
         lowres_name = f"lowres-{name}"
         lowres_info = self.images.get(lowres_name)
         if (
