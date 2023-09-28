@@ -20,9 +20,7 @@ def draw_box_borders(pdf, x1, y1, x2, y2, border, fill_color=None):
 
     if fill_color:
         prev_fill_color = pdf.fill_color
-        if isinstance(fill_color, (int, float)):
-            fill_color = [fill_color]
-        pdf.set_fill_color(*fill_color)
+        pdf.set_fill_color(fill_color)
 
     sl = []
 

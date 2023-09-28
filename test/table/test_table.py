@@ -480,3 +480,18 @@ def test_table_with_no_headers_nor_horizontal_lines(tmp_path):  # discussion 924
     assert_pdf_equal(
         pdf, HERE / "table_with_no_headers_nor_horizontal_lines.pdf", tmp_path
     )
+
+
+def test_table_with_fill_color_set_beforehand(tmp_path):  # issue 932
+    pdf = FPDF()
+    pdf.set_font("Helvetica")
+    pdf.set_fill_color((126, 217, 87))
+    pdf.add_page()
+    with pdf.table(
+        TABLE_DATA,
+        cell_fill_color=(247, 248, 253),
+        cell_fill_mode="COLUMNS",
+        headings_style=FontFace(fill_color=(255, 255, 255)),
+    ):
+        pass
+    assert_pdf_equal(pdf, HERE / "table_with_fill_color_set_beforehand.pdf", tmp_path)
