@@ -625,9 +625,24 @@ def test_table_with_no_horizontal_lines_layout(tmp_path):
         num_heading_rows=1,
     ):
         pass
-
     assert_pdf_equal(
         pdf,
         HERE / "table_with_no_horizontal_lines_layout.pdf",
+        tmp_path,
+    )
+
+
+def test_table_with_set_fill_color(tmp_path):  # issue 963
+    pdf = FPDF()
+    pdf.set_font("helvetica", size=10)
+    pdf.add_page()
+    with pdf.table(first_row_as_headings=False) as table:
+        row = table.row()
+        pdf.set_fill_color(200)
+        pdf.set_fill_color(200, 200, 200)
+        row.cell("Hello")
+    assert_pdf_equal(
+        pdf,
+        HERE / "table_with_set_fill_color.pdf",
         tmp_path,
     )
