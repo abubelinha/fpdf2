@@ -20,3 +20,10 @@ Several methods can be used to set margins:
 * [set_top_margin](https://py-pdf.github.io/fpdf2/fpdf/#fpdf.FPDF.set_top_margin)
 * [set_margins](https://py-pdf.github.io/fpdf2/fpdf/#fpdf.FPDF.set_margins)
 * [set_auto_page_break](https://py-pdf.github.io/fpdf2/fpdf/#fpdf.FPDF.set_auto_page_break)
+
+# Knowing page dimensions #
+
+* fpdf.w = Page width  [api link not available]
+* fpdf.h = Page height  [api link not available]
+* [fpdf.epw](https://py-pdf.github.io/fpdf2/fpdf/fpdf.html#fpdf.fpdf.FPDF.epw) = Effective page width: the page width minus its horizontal margins.
+* [fpdf.eph](https://py-pdf.github.io/fpdf2/fpdf/fpdf.html#fpdf.fpdf.FPDF.eph) = Effective page height: the page height minus its vertical margins.
